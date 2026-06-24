@@ -1,0 +1,28 @@
+{
+  "expo": {
+    "name": "Ascend System",
+    "slug": "ascend-system",
+    "scheme": "ascend",
+    "version": "0.1.0",
+    "orientation": "portrait",
+    "userInterfaceStyle": "dark",
+    "platforms": ["android"],
+    "android": {
+      "package": "com.aljaz.ascendsystem"
+    },
+    "plugins": [
+      "expo-router",
+      [
+        "expo-build-properties",
+        {
+          "android": {
+            "compileSdkVersion": 36,
+            "targetSdkVersion": 36,
+            "minSdkVersion": 26,
+            "buildArchs": ["arm64-v8a"]
+          }
+        }
+      ]
+    ]
+  }
+}
