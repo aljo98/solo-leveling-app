@@ -42,6 +42,7 @@ export default function AssistantScreen() {
   const [messages, setMessages] = useState<AssistantMessage[]>([]);
   const [input, setInput] = useState("");
   const [suggestedQuest, setSuggestedQuest] = useState<Quest | null>(null);
+  const [activeTab, setActiveTab] = useState<"chat" | "settings">("chat");
   const [loading, setLoading] = useState(true);
   const [sending, setSending] = useState(false);
 
@@ -70,9 +71,12 @@ export default function AssistantScreen() {
     };
   }, [snapshot]);
 
-  const saveSettings = async (nextSettings: AssistantSettings) => {
-    setSettings(nextSettings);
-    await localStore.saveAssistantSettings(nextSettings);
+  const updateSettings = (patch: Partial<AssistantSettings>) => {
+    setSettings((current) => {
+      const nextSettings = { ...current, ...patch };
+      void localStore.saveAssistantSettings(nextSettings);
+      return nextSettings;
+    });
   };
 
   const sendMessage = async (text: string) => {
@@ -126,139 +130,230 @@ export default function AssistantScreen() {
         <Text style={styles.kicker}>AI ASSISTANT</Text>
         <Text style={styles.title}>Quest coach</Text>
 
-        <Card>
-          <Text style={styles.cardTitle}>Assist mode</Text>
-          <Text style={styles.muted}>
-            Chat uporablja konfiguriran AI backend, če obstaja. Brez backend URL-ja
-            deluje lokalni coach za pregled, prilagoditev in ustvarjanje vaj.
-          </Text>
-          <View style={styles.pillRow}>
-            <StatPill label="7 days" value={`${snapshot.activeDays7}/7`} />
-            <StatPill label="14 days" value={`${snapshot.activeDays14}/14`} />
-            <StatPill
-              label="Speech"
-              value={settings.speechEnabled ? "On" : "Off"}
-              tone={settings.speechEnabled ? "cyan" : "default"}
-              onPress={() =>
-                saveSettings({
-                  ...settings,
-                  speechEnabled: !settings.speechEnabled
-                })
-              }
-            />
-          </View>
-        </Card>
+        <View style={styles.tabBar}>
+          <Pressable
+            style={[styles.tab, activeTab === "chat" ? styles.activeTab : null]}
+            onPress={() => setActiveTab("chat")}
+          >
+            <Text
+              style={[
+                styles.tabText,
+                activeTab === "chat" ? styles.activeTabText : null
+              ]}
+            >
+              Chat
+            </Text>
+          </Pressable>
+          <Pressable
+            style={[styles.tab, activeTab === "settings" ? styles.activeTab : null]}
+            onPress={() => setActiveTab("settings")}
+          >
+            <Text
+              style={[
+                styles.tabText,
+                activeTab === "settings" ? styles.activeTabText : null
+              ]}
+            >
+              Nastavitve
+            </Text>
+          </Pressable>
+        </View>
 
-        <Card>
-          <Text style={styles.cardTitle}>Backend settings</Text>
-          <Text style={styles.fieldLabel}>AI backend URL</Text>
-          <TextInput
-            value={settings.aiBackendUrl ?? ""}
-            onChangeText={(value) =>
-              setSettings((current) => ({ ...current, aiBackendUrl: value }))
-            }
-            onBlur={() => localStore.saveAssistantSettings(settings)}
-            placeholder="https://your-domain.com/api/assistant"
-            placeholderTextColor={theme.colors.textMuted}
-            style={styles.input}
-            autoCapitalize="none"
-          />
-          <Text style={styles.fieldLabel}>Minimax speech proxy URL</Text>
-          <TextInput
-            value={settings.minimaxSpeechProxyUrl ?? ""}
-            onChangeText={(value) =>
-              setSettings((current) => ({
-                ...current,
-                minimaxSpeechProxyUrl: value
-              }))
-            }
-            onBlur={() => localStore.saveAssistantSettings(settings)}
-            placeholder="https://your-domain.com/api/minimax/tts"
-            placeholderTextColor={theme.colors.textMuted}
-            style={styles.input}
-            autoCapitalize="none"
-          />
-          <Text style={styles.fieldLabel}>Voice id</Text>
-          <TextInput
-            value={settings.minimaxVoiceId ?? ""}
-            onChangeText={(value) =>
-              setSettings((current) => ({ ...current, minimaxVoiceId: value }))
-            }
-            onBlur={() => localStore.saveAssistantSettings(settings)}
-            placeholder="male-qn-qingse"
-            placeholderTextColor={theme.colors.textMuted}
-            style={styles.input}
-            autoCapitalize="none"
-          />
-        </Card>
+        {activeTab === "chat" ? (
+          <>
+            <Card>
+              <Text style={styles.cardTitle}>Chat</Text>
+              <View style={styles.pillRow}>
+                <StatPill label="7 days" value={`${snapshot.activeDays7}/7`} />
+                <StatPill label="14 days" value={`${snapshot.activeDays14}/14`} />
+                <StatPill
+                  label="Speech"
+                  value={settings.speechEnabled ? "On" : "Off"}
+                  tone={settings.speechEnabled ? "cyan" : "default"}
+                  onPress={() =>
+                    updateSettings({ speechEnabled: !settings.speechEnabled })
+                  }
+                />
+              </View>
+              <View style={styles.messages}>
+                {messages.length ? (
+                  messages.slice(-12).map((message) => (
+                    <View
+                      key={message.id}
+                      style={[
+                        styles.message,
+                        message.role === "user"
+                          ? styles.userMessage
+                          : styles.assistantMessage
+                      ]}
+                    >
+                      <Text style={styles.messageRole}>
+                        {message.role === "user" ? "You" : "Assistant"}
+                      </Text>
+                      <Text style={styles.messageText}>{message.text}</Text>
+                      {message.role === "assistant" ? (
+                        <PrimaryButton
+                          label="Speak"
+                          variant="ghost"
+                          onPress={() => speakAssistantText(message.text, settings)}
+                        />
+                      ) : null}
+                    </View>
+                  ))
+                ) : (
+                  <View style={[styles.message, styles.assistantMessage]}>
+                    <Text style={styles.messageRole}>Assistant</Text>
+                    <Text style={styles.messageText}>
+                      Napiši, kaj rabiš: pregled questa, lažjo verzijo, težjo
+                      verzijo ali novo vajo. Lokalni coach deluje takoj, AI
+                      backend in Minimax govor nastaviš v zavihku Nastavitve.
+                    </Text>
+                  </View>
+                )}
+              </View>
+              <TextInput
+                value={input}
+                onChangeText={setInput}
+                placeholder="Vprašaj za pregled, prilagoditev ali novo vajo..."
+                placeholderTextColor={theme.colors.textMuted}
+                style={[styles.input, styles.chatInput]}
+                multiline
+              />
+              <View style={styles.actions}>
+                <PrimaryButton
+                  label={sending ? "Thinking..." : "Send"}
+                  disabled={sending}
+                  onPress={() => sendMessage(input)}
+                />
+                <PrimaryButton
+                  label="Stop speech"
+                  variant="ghost"
+                  onPress={stopAssistantSpeech}
+                />
+              </View>
+            </Card>
 
-        <Card>
-          <Text style={styles.cardTitle}>Quick actions</Text>
-          <View style={styles.quickGrid}>
-            {quickPrompts.map((prompt) => (
-              <Pressable
-                key={prompt}
-                style={styles.quickButton}
-                onPress={() => sendMessage(prompt)}
-                disabled={sending}
-              >
-                <Text style={styles.quickText}>{prompt}</Text>
-              </Pressable>
-            ))}
-          </View>
-        </Card>
-
-        <Card>
-          <Text style={styles.cardTitle}>Chat</Text>
-          <View style={styles.messages}>
-            {messages.length ? (
-              messages.slice(-12).map((message) => (
-                <View
-                  key={message.id}
-                  style={[
-                    styles.message,
-                    message.role === "user" ? styles.userMessage : styles.assistantMessage
-                  ]}
-                >
-                  <Text style={styles.messageRole}>{message.role}</Text>
-                  <Text style={styles.messageText}>{message.text}</Text>
-                  {message.role === "assistant" ? (
-                    <PrimaryButton
-                      label="Speak"
-                      variant="ghost"
-                      onPress={() => speakAssistantText(message.text, settings)}
-                    />
-                  ) : null}
-                </View>
-              ))
-            ) : (
-              <Text style={styles.muted}>
-                Začni z vprašanjem ali uporabi quick action. Primer: "ustvari 10
-                min mobility".
+            <Card>
+              <Text style={styles.cardTitle}>Quick actions</Text>
+              <View style={styles.quickGrid}>
+                {quickPrompts.map((prompt) => (
+                  <Pressable
+                    key={prompt}
+                    style={styles.quickButton}
+                    onPress={() => sendMessage(prompt)}
+                    disabled={sending}
+                  >
+                    <Text style={styles.quickText}>{prompt}</Text>
+                  </Pressable>
+                ))}
+              </View>
+            </Card>
+          </>
+        ) : (
+          <>
+            <Card>
+              <Text style={styles.cardTitle}>Nastavitve asistenta</Text>
+              <Text style={styles.fieldLabel}>AI backend URL</Text>
+              <TextInput
+                value={settings.aiBackendUrl ?? ""}
+                onChangeText={(value) => updateSettings({ aiBackendUrl: value })}
+                placeholder="https://your-domain.com/api/assistant"
+                placeholderTextColor={theme.colors.textMuted}
+                style={styles.input}
+                autoCapitalize="none"
+                keyboardType="url"
+              />
+              <Text style={styles.fieldHint}>
+                Opcijsko. Če je prazno, chat uporablja lokalnega coacha.
               </Text>
-            )}
-          </View>
-          <TextInput
-            value={input}
-            onChangeText={setInput}
-            placeholder="Ask for review, adaptation, or new exercise..."
-            placeholderTextColor={theme.colors.textMuted}
-            style={[styles.input, styles.chatInput]}
-            multiline
-          />
-          <View style={styles.actions}>
-            <PrimaryButton
-              label={sending ? "Thinking..." : "Send"}
-              disabled={sending}
-              onPress={() => sendMessage(input)}
-            />
-            <PrimaryButton
-              label="Stop speech"
-              variant="ghost"
-              onPress={stopAssistantSpeech}
-            />
-          </View>
-        </Card>
+            </Card>
+
+            <Card>
+              <Text style={styles.cardTitle}>Minimax govor</Text>
+              <View style={styles.switchRow}>
+                <Text style={styles.switchLabel}>Speech</Text>
+                <StatPill
+                  label="Mode"
+                  value={settings.speechEnabled ? "On" : "Off"}
+                  tone={settings.speechEnabled ? "cyan" : "default"}
+                  onPress={() =>
+                    updateSettings({ speechEnabled: !settings.speechEnabled })
+                  }
+                />
+              </View>
+
+              <Text style={styles.fieldLabel}>Minimax API key</Text>
+              <TextInput
+                value={settings.minimaxApiKey ?? ""}
+                onChangeText={(value) => updateSettings({ minimaxApiKey: value })}
+                placeholder="Bearer key"
+                placeholderTextColor={theme.colors.textMuted}
+                style={styles.input}
+                autoCapitalize="none"
+                secureTextEntry
+              />
+              <Text style={styles.fieldLabel}>Minimax Group ID</Text>
+              <TextInput
+                value={settings.minimaxGroupId ?? ""}
+                onChangeText={(value) => updateSettings({ minimaxGroupId: value })}
+                placeholder="GroupId iz Minimax konzole"
+                placeholderTextColor={theme.colors.textMuted}
+                style={styles.input}
+                autoCapitalize="none"
+              />
+              <Text style={styles.fieldLabel}>Model</Text>
+              <TextInput
+                value={settings.minimaxModel ?? ""}
+                onChangeText={(value) => updateSettings({ minimaxModel: value })}
+                placeholder="speech-02-hd"
+                placeholderTextColor={theme.colors.textMuted}
+                style={styles.input}
+                autoCapitalize="none"
+              />
+              <Text style={styles.fieldLabel}>Voice ID</Text>
+              <TextInput
+                value={settings.minimaxVoiceId ?? ""}
+                onChangeText={(value) => updateSettings({ minimaxVoiceId: value })}
+                placeholder="male-qn-qingse"
+                placeholderTextColor={theme.colors.textMuted}
+                style={styles.input}
+                autoCapitalize="none"
+              />
+              <Text style={styles.fieldLabel}>Proxy URL</Text>
+              <TextInput
+                value={settings.minimaxSpeechProxyUrl ?? ""}
+                onChangeText={(value) =>
+                  updateSettings({ minimaxSpeechProxyUrl: value })
+                }
+                placeholder="https://your-domain.com/api/minimax/tts"
+                placeholderTextColor={theme.colors.textMuted}
+                style={styles.input}
+                autoCapitalize="none"
+                keyboardType="url"
+              />
+              <Text style={styles.fieldHint}>
+                Proxy je priporočljiv za produkcijo. Neposreden API key je
+                shranjen lokalno v aplikaciji na napravi.
+              </Text>
+              <View style={styles.actions}>
+                <PrimaryButton
+                  label="Test Minimax speech"
+                  onPress={() =>
+                    speakAssistantText(
+                      "Minimax speech test. Quest coach is ready.",
+                      settings
+                    )
+                  }
+                />
+                <PrimaryButton
+                  label="Stop speech"
+                  variant="ghost"
+                  onPress={stopAssistantSpeech}
+                />
+              </View>
+            </Card>
+          </>
+        )}
 
         {suggestedQuest ? (
           <View style={styles.suggested}>
@@ -302,6 +397,33 @@ const styles = StyleSheet.create({
     lineHeight: 36,
     fontWeight: "900"
   },
+  tabBar: {
+    flexDirection: "row",
+    gap: theme.spacing.sm,
+    backgroundColor: theme.colors.surface,
+    borderColor: theme.colors.border,
+    borderRadius: theme.radii.sm,
+    borderWidth: 1,
+    padding: 4
+  },
+  tab: {
+    alignItems: "center",
+    borderRadius: theme.radii.sm,
+    flex: 1,
+    minHeight: 48,
+    justifyContent: "center"
+  },
+  activeTab: {
+    backgroundColor: theme.colors.primary
+  },
+  tabText: {
+    color: theme.colors.textMuted,
+    fontSize: 15,
+    fontWeight: "900"
+  },
+  activeTabText: {
+    color: theme.colors.background
+  },
   cardTitle: {
     color: theme.colors.text,
     fontSize: 20,
@@ -325,6 +447,12 @@ const styles = StyleSheet.create({
     fontWeight: "800",
     marginTop: theme.spacing.md
   },
+  fieldHint: {
+    color: theme.colors.textMuted,
+    fontSize: 12,
+    lineHeight: 18,
+    marginTop: theme.spacing.sm
+  },
   input: {
     minHeight: 50,
     borderColor: theme.colors.border,
@@ -335,6 +463,18 @@ const styles = StyleSheet.create({
     marginTop: theme.spacing.sm,
     paddingHorizontal: theme.spacing.md,
     paddingVertical: theme.spacing.sm
+  },
+  switchRow: {
+    alignItems: "center",
+    flexDirection: "row",
+    justifyContent: "space-between",
+    gap: theme.spacing.sm,
+    marginTop: theme.spacing.md
+  },
+  switchLabel: {
+    color: theme.colors.text,
+    fontSize: 16,
+    fontWeight: "800"
   },
   chatInput: {
     minHeight: 82,

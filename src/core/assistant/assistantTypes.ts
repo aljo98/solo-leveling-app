@@ -12,6 +12,9 @@ export type AssistantMessage = {
 export type AssistantSettings = {
   aiBackendUrl?: string;
   minimaxSpeechProxyUrl?: string;
+  minimaxApiKey?: string;
+  minimaxGroupId?: string;
+  minimaxModel?: string;
   minimaxVoiceId?: string;
   speechEnabled: boolean;
 };
@@ -31,5 +34,6 @@ export type AssistantReply = {
 
 export const defaultAssistantSettings: AssistantSettings = {
   speechEnabled: true,
+  minimaxModel: "speech-02-hd",
   minimaxVoiceId: "male-qn-qingse"
 };
