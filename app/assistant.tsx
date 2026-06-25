@@ -8,7 +8,7 @@ import {
   TextInput,
   View
 } from "react-native";
-import { router } from "expo-router";
+import { router, useLocalSearchParams } from "expo-router";
 import { SafeAreaView } from "react-native-safe-area-context";
 
 import { generateAssistantReply } from "../src/core/assistant/assistantEngine";
@@ -35,6 +35,7 @@ const quickPrompts = [
 ];
 
 export default function AssistantScreen() {
+  const params = useLocalSearchParams<{ tab?: string }>();
   const [snapshot, setSnapshot] = useState<LocalSnapshot | null>(null);
   const [settings, setSettings] = useState<AssistantSettings>(
     defaultAssistantSettings
@@ -42,7 +43,9 @@ export default function AssistantScreen() {
   const [messages, setMessages] = useState<AssistantMessage[]>([]);
   const [input, setInput] = useState("");
   const [suggestedQuest, setSuggestedQuest] = useState<Quest | null>(null);
-  const [activeTab, setActiveTab] = useState<"chat" | "settings">("chat");
+  const [activeTab, setActiveTab] = useState<"chat" | "settings">(
+    params.tab === "settings" ? "settings" : "chat"
+  );
   const [loading, setLoading] = useState(true);
   const [sending, setSending] = useState(false);
 

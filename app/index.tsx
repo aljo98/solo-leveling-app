@@ -105,6 +105,37 @@ export default function HomeScreen() {
           </Text>
         </Card>
 
+        <Card>
+          <View style={styles.aiHeader}>
+            <View style={styles.aiTitleBlock}>
+              <Text style={styles.cardLabel}>AI companion</Text>
+              <Text style={styles.cardTitle}>Chat + Minimax settings</Text>
+            </View>
+            <Text style={styles.versionPill}>v0.1.3</Text>
+          </View>
+          <Text style={styles.muted}>
+            Odpri chat za pregled questa ali nastavitve za Minimax API key,
+            Group ID, model in test govora.
+          </Text>
+          <View style={styles.aiActions}>
+            <PrimaryButton
+              label="AI Chat"
+              variant="secondary"
+              onPress={() => router.push("/assistant")}
+            />
+            <PrimaryButton
+              label="Minimax nastavitve"
+              variant="ghost"
+              onPress={() =>
+                router.push({
+                  pathname: "/assistant",
+                  params: { tab: "settings" }
+                })
+              }
+            />
+          </View>
+        </Card>
+
         {snapshot.todayCheckIn ? (
           <Card tone={todayMode === "crisis" ? "warning" : "default"}>
             <Text style={styles.cardLabel}>Day mode</Text>
@@ -385,8 +416,32 @@ const styles = StyleSheet.create({
     fontSize: 15,
     fontWeight: "800"
   },
+  aiHeader: {
+    alignItems: "flex-start",
+    flexDirection: "row",
+    justifyContent: "space-between",
+    gap: theme.spacing.md
+  },
+  aiTitleBlock: {
+    flex: 1
+  },
+  versionPill: {
+    borderColor: theme.colors.primary,
+    borderRadius: theme.radii.sm,
+    borderWidth: 1,
+    color: theme.colors.primary,
+    fontSize: 12,
+    fontWeight: "900",
+    paddingHorizontal: theme.spacing.sm,
+    paddingVertical: theme.spacing.xs
+  },
+  aiActions: {
+    gap: theme.spacing.sm,
+    marginTop: theme.spacing.md
+  },
   actions: {
     flexDirection: "row",
+    flexWrap: "wrap",
     gap: theme.spacing.sm,
     marginTop: theme.spacing.md
   },
