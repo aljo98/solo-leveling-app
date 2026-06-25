@@ -1,5 +1,10 @@
 import * as SQLite from "expo-sqlite";
 
+import { defaultAssistantSettings } from "../core/assistant/assistantTypes";
+import type {
+  AssistantMessage,
+  AssistantSettings
+} from "../core/assistant/assistantTypes";
 import { getQuestIntensity } from "../core/quest/questEngine";
 import type { CheckIn, Quest } from "../core/quest/questTypes";
 import type { XpByStat } from "../core/xp/xpTypes";
@@ -17,6 +22,7 @@ type ValueRow = { value: string };
 type QuestRow = { value: string };
 type LogRow = { value: string };
 type JournalRow = { value: string };
+type AssistantRow = { value: string };
 type XpRow = { stat: keyof XpByStat; value: number };
 
 const DB_NAME = "ascend-local-mvp.db";
@@ -50,6 +56,11 @@ function getDb() {
       CREATE TABLE IF NOT EXISTS journal_reflections (
         id TEXT PRIMARY KEY NOT NULL,
         date TEXT NOT NULL,
+        value TEXT NOT NULL
+      );
+      CREATE TABLE IF NOT EXISTS assistant_messages (
+        id TEXT PRIMARY KEY NOT NULL,
+        created_at TEXT NOT NULL,
         value TEXT NOT NULL
       );
       CREATE TABLE IF NOT EXISTS xp_totals (
@@ -111,6 +122,14 @@ export const localStore: AppStorage = {
       .map((row) => readJson<JournalReflection>(row))
       .filter((value): value is JournalReflection => Boolean(value));
     const xpTotals = loadXpTotals();
+    const assistantSettings =
+      getKv<AssistantSettings>("assistant_settings") ?? defaultAssistantSettings;
+    const assistantMessages = getDb()
+      .getAllSync<AssistantRow>(
+        "SELECT value FROM assistant_messages ORDER BY created_at ASC LIMIT 80"
+      )
+      .map((row) => readJson<AssistantMessage>(row))
+      .filter((value): value is AssistantMessage => Boolean(value));
     const history = questLogs.map((log) => ({
       date: log.date,
       questId: log.questId,
@@ -138,6 +157,8 @@ export const localStore: AppStorage = {
       todayQuest,
       questLogs,
       journalReflections,
+      assistantMessages,
+      assistantSettings,
       xpTotals,
       history,
       activeDays7: countActiveDays(questLogs, 7),
@@ -201,6 +222,23 @@ export const localStore: AppStorage = {
       reflection.date,
       JSON.stringify(reflection)
     );
+  },
+
+  async saveAssistantSettings(settings: AssistantSettings): Promise<void> {
+    setKv("assistant_settings", settings);
+  },
+
+  async saveAssistantMessage(message: AssistantMessage): Promise<void> {
+    getDb().runSync(
+      "INSERT OR REPLACE INTO assistant_messages (id, created_at, value) VALUES (?, ?, ?)",
+      message.id,
+      message.createdAt,
+      JSON.stringify(message)
+    );
+  },
+
+  async clearAssistantMessages(): Promise<void> {
+    getDb().runSync("DELETE FROM assistant_messages");
   }
 };
 

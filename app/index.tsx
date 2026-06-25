@@ -158,8 +158,13 @@ export default function HomeScreen() {
           </Text>
           <View style={styles.actions}>
             <PrimaryButton
-              label="Progress"
+              label="Assistant"
               variant="secondary"
+              onPress={() => router.push("/assistant")}
+            />
+            <PrimaryButton
+              label="Progress"
+              variant="ghost"
               onPress={() => router.push("/progress")}
             />
             <PrimaryButton

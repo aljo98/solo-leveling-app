@@ -1,4 +1,8 @@
 import type {
+  AssistantMessage,
+  AssistantSettings
+} from "../core/assistant/assistantTypes";
+import type {
   BodyGoal,
   CheckIn,
   Equipment,
@@ -50,6 +54,8 @@ export type LocalSnapshot = {
   todayQuest?: Quest;
   questLogs: QuestLogRecord[];
   journalReflections: JournalReflection[];
+  assistantMessages: AssistantMessage[];
+  assistantSettings: AssistantSettings;
   xpTotals: XpByStat;
   history: QuestHistoryEntry[];
   activeDays7: number;
@@ -64,6 +70,9 @@ export interface AppStorage {
   saveQuestLog(log: QuestLogRecord): Promise<void>;
   addXp(xp: XpByStat): Promise<void>;
   saveJournalReflection(reflection: JournalReflection): Promise<void>;
+  saveAssistantSettings(settings: AssistantSettings): Promise<void>;
+  saveAssistantMessage(message: AssistantMessage): Promise<void>;
+  clearAssistantMessages(): Promise<void>;
 }
 
 export const defaultBodyGoal: BodyGoal = {

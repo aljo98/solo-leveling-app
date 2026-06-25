@@ -156,6 +156,12 @@ export default function QuestHudScreen() {
 
         <View style={styles.buttonStack}>
           <PrimaryButton
+            label="Ask assistant"
+            variant="secondary"
+            disabled={saving}
+            onPress={() => router.push("/assistant")}
+          />
+          <PrimaryButton
             label={saving ? "Saving..." : "Done"}
             disabled={saving || paused}
             onPress={() => markStepDone(currentStep)}

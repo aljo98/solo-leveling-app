@@ -20,6 +20,7 @@ export default function RootLayout() {
       >
         <Stack.Screen name="index" options={{ title: "Daily System" }} />
         <Stack.Screen name="quest/[id]" options={{ title: "Quest HUD" }} />
+        <Stack.Screen name="assistant" options={{ title: "Assistant" }} />
         <Stack.Screen name="journal" options={{ title: "Reflection" }} />
         <Stack.Screen name="progress" options={{ title: "Progress" }} />
       </Stack>
