@@ -1,55 +1,98 @@
-# AI Assistant and Minimax Speech Proxy
+# AI Assistant and Minimax Speech
 
-The Android app does not store provider API keys in the APK.
+Ta dokument opisuje integracijo AI asistenta in Minimax govora v Android MVP.
+Namenjen je maintainerju ali razvijalcu backend endpointa.
 
-Assistant and Minimax speech integrations are configured from the in-app
-Assistant screen with optional backend URLs.
+## Povzetek
 
-## AI assistant endpoint
+Aplikacija podpira tri ravni asistence:
 
-Configure:
+1. Lokalni coach deluje brez backendov in brez API ključev.
+2. AI backend URL omogoči zunanji chat model.
+3. Minimax omogoči govor prek proxy endpointa ali neposrednega API ključa na
+   napravi.
 
-```txt
-https://your-domain.com/api/assistant
-```
+Za produkcijo je priporočena proxy pot. Neposreden API key v aplikaciji je
+namenjen osebnemu testiranju na lastni napravi.
 
-Request:
+## AI Chat
+
+Če `AI backend URL` ni nastavljen, aplikacija uporabi lokalnega coacha. Lokalni
+coach zna pregledati quest, prilagoditi težavnost in ustvariti osnovne exercise
+queste.
+
+Če je `AI backend URL` nastavljen, aplikacija pošlje `POST` request na ta URL.
+
+### Request
 
 ```json
 {
-  "message": "preglej quest",
+  "message": "preglej današnji quest",
   "context": {
     "playerName": "Aljaz",
-    "todayQuest": {},
+    "todayQuest": {
+      "id": "quest-2026-06-26",
+      "title": "Minimum Quest",
+      "durationMinutes": 10
+    },
     "activeDays7": 3,
     "activeDays14": 6,
     "totalXp": 120
   },
-  "history": []
+  "history": [
+    {
+      "id": "user-1",
+      "role": "user",
+      "text": "Naredi lažje",
+      "createdAt": "2026-06-26T08:00:00.000Z"
+    }
+  ]
 }
 ```
 
-Response:
+### Response
 
 ```json
 {
-  "text": "Pregled: današnji quest je primeren ...",
+  "text": "Današnji quest je primeren, ampak ga lahko zmanjšaš na 5 minut mobility.",
   "suggestedQuest": null
 }
 ```
 
-`suggestedQuest` may be omitted. If returned, it must match the app `Quest`
-shape from `src/core/quest/questTypes.ts`.
+`suggestedQuest` je opcijski. Če ga backend vrne, mora biti združljiv z obliko
+questa, ki jo aplikacija že uporablja. Če backend nima zanesljivega quest
+generatorja, naj vrne samo `text`.
 
-## Minimax speech endpoint
+### Priporočeno vedenje backenda
 
-Configure:
+Backend naj:
+
+- uporablja kratek, praktičen odgovor,
+- spoštuje nizko energijo, stres in body pain,
+- predlaga minimalne naloge, kadar je signal slab,
+- ne daje medicinskih diagnoz,
+- ne sili v vaje skozi bolečino,
+- vrne `suggestedQuest` samo, kadar je struktura zanesljivo veljavna.
+
+## Minimax Speech
+
+Aplikacija poskusi govor v tem vrstnem redu:
+
+1. `Proxy URL`, če je nastavljen.
+2. Neposreden Minimax API, če sta nastavljena `Minimax API key` in `Group ID`.
+3. Lokalni speech fallback naprave.
+
+## Minimax proxy
+
+Proxy je priporočena produkcijska pot, ker API ključ ostane na serverju.
+
+V aplikaciji nastavi:
 
 ```txt
 https://your-domain.com/api/minimax/tts
 ```
 
-Request:
+### Proxy request
 
 ```json
 {
@@ -58,7 +101,7 @@ Request:
 }
 ```
 
-Response option A:
+### Proxy response z audio URL
 
 ```json
 {
@@ -66,7 +109,7 @@ Response option A:
 }
 ```
 
-Response option B:
+### Proxy response z base64 audio
 
 ```json
 {
@@ -75,10 +118,45 @@ Response option B:
 }
 ```
 
-If the Minimax proxy is missing or fails, the app falls back to local
-`expo-speech`.
+Če proxy vrne napako, neveljaven JSON ali odgovor brez audia, aplikacija pade
+nazaj na naslednji speech način.
 
-## Security rule
+## Neposreden Minimax API na napravi
 
-Keep Minimax/OpenAI/provider keys only on the backend. Never place them in
-`app.json`, app source, SQLite, or a committed `.env` file.
+Neposredna pot je namenjena testiranju. Uporabnik v aplikaciji vnese:
+
+- `Minimax API key`
+- `Minimax Group ID`
+- `Model`, privzeto `speech-02-hd`
+- `Voice ID`, privzeto `male-qn-qingse`
+
+Aplikacija kliče Minimax text-to-speech endpoint in pričakuje audio v odgovoru.
+Če Minimax vrne URL, ga aplikacija predvaja. Če vrne hex audio payload, ga
+aplikacija pretvori v base64 data URI in predvaja.
+
+## Varnost
+
+Za osebno lokalno testiranje je neposreden key v aplikaciji sprejemljiv, ker je
+shranjen samo v lokalnih nastavitvah naprave.
+
+Za produkcijo ali deljenje APK-ja drugim uporabnikom uporabi proxy:
+
+- API key ostane na serverju.
+- Na serverju lahko dodaš rate limiting.
+- Na serverju lahko zamenjaš providerja brez novega APK-ja.
+- Na serverju lahko vodiš audit log in stroškovne omejitve.
+
+Ne committaj provider ključev v repozitorij, `app.json`, dokumentacijo ali
+release notes.
+
+## Testiranje v aplikaciji
+
+1. Odpri `Daily System`.
+2. Tapni `Minimax nastavitve`.
+3. Vklopi `Speech`.
+4. Nastavi proxy ali neposredne Minimax podatke.
+5. Tapni `Test Minimax speech`.
+
+Če slišiš testni stavek, je speech pot pravilno nastavljena. Če ne, aplikacija
+poskusi lokalni speech fallback.
+
